@@ -37,6 +37,14 @@ void * run_thread(void * my_id)
   int i;
   int start_pos = ((int) my_id) * (current_batch_size / thread_count);
   int end_pos = start_pos + (current_batch_size / thread_count);
+
+  // Make sure the rounding errors didn't cause problems.
+  // Read to the end no matter what on the last thread
+  if((int) my_id == thread_count - 1)
+  {
+    end_pos = MAX_BATCH_SIZE;
+  }
+
   const int count = end_pos - start_pos;
   long local_sums[count];
 
