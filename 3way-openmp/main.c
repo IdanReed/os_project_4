@@ -32,12 +32,12 @@ long sum_line(int idx)
   return sum;
 }
 
-void * run_thread(void * my_id)
+void * run_thread( int my_id)
 {
   int i;
-  int start_pos = ((int) my_id) * (current_batch_size / thread_count);
-  int end_pos = start_pos + (current_batch_size / thread_count);
-  const int count = end_pos - start_pos;
+  int start_pos;
+  int end_pos;
+  int count;
   long *local_sums;
 
   #pragma omp private(myID,i,start_pos,end_pos,count,local_sums)
@@ -46,6 +46,13 @@ void * run_thread(void * my_id)
     end_pos = start_pos + (current_batch_size / thread_count);
     count = end_pos - start_pos;
     local_sums = malloc(sizeof(*local_sums) * count );
+
+    // Make sure the rounding errors didn't cause problems.
+    // Read to the end no matter what on the last thread
+    if((int) my_id == thread_count - 1)
+    {
+      end_pos = current_batch_size;
+    }
 
     for(i = start_pos; i < end_pos; i++){
       local_sums[i - start_pos] = sum_line(i);
@@ -85,7 +92,6 @@ int read_lines(FILE * fp){
 
 int main(int argc, char * argv[])
 {
-
   pthread_mutex_init(&mutexsum, NULL);
   thread_count = DEFAULT_THREAD_COUNT;
   char * perf_out = "performance.csv";
@@ -126,37 +132,20 @@ int main(int argc, char * argv[])
     current_batch_size = line_cnt;
 
     gettimeofday(&start, NULL);
-    // Start Threads
-    for(i = 0; i < thread_count; i++){
-      // rc = pthread_create(&threads[i], &attr, run_thread, (void *) i);
-      // if (rc) {
-      //   printf("ERROR: return code from pthread_create() is %d\n", rc);
-      //   exit(EXIT_FAILURE);
-      // }
-      #pragma omp parallel
-      {
-        run_thread(void * i);
-      }
+
+    omp_set_num_threads(thread_count);
+
+    #pragma omp parallel
+    {
+      run_thread(omp_get_thread_num());
     }
 
-
-    // Join threads
-    // pthread_attr_destroy(&attr);
-    // for(i = 0; i < thread_count; i++){
-    //   rc = pthread_join(threads[i], &status);
-    //   if (rc) {
-    //     printf("ERROR: return code from pthread_join() is %d\n", rc);
-    //     exit(EXIT_FAILURE);
-    //   }
-    // }
-    // gettimeofday(&end, NULL);
+    gettimeofday(&end, NULL);
 
     summation_time += end.tv_sec + end.tv_usec / 1e6 -
                       start.tv_sec - start.tv_usec / 1e6;
 
-
     print_batch(batch_cnt);
-
 
     batch_cnt++;
   }
@@ -172,6 +161,4 @@ int main(int argc, char * argv[])
 
   fclose(out);
 
-	// pthread_mutex_destroy(&mutexsum);
-	// pthread_exit(NULL);
 }
