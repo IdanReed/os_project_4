@@ -6,7 +6,7 @@
 
 #define DEFAULT_THREAD_COUNT 12
 
-#define MAX_BATCH_SIZE 1000000
+#define MAX_BATCH_SIZE 120000
 
 
 int thread_count;
@@ -42,7 +42,7 @@ void * run_thread(void * my_id)
   // Read to the end no matter what on the last thread
   if((int) my_id == thread_count - 1)
   {
-    end_pos = MAX_BATCH_SIZE;
+    end_pos = current_batch_size;
   }
 
   const int count = end_pos - start_pos;
@@ -52,11 +52,12 @@ void * run_thread(void * my_id)
     local_sums[i - start_pos] = sum_line(i);
   }
 
-  pthread_mutex_lock (&mutexsum);
+  //pthread_mutex_lock (&mutexsum);
   for(i = 0; i < count; i++){
     sums[i + start_pos] = local_sums[i];
   }
-  pthread_mutex_unlock (&mutexsum);
+  //pthread_mutex_unlock (&mutexsum);
+
 
   pthread_exit(NULL);
 }
