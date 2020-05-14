@@ -1,5 +1,15 @@
+LDFLAGS 	= -fopenmp
+CC 			= gcc
+PROGRAM 	= main
+SRCS 		= main.c
+OBJS 		= $(SRCS:.c=.o)
 
+default: all
 
-PROGRAM = open_mp
-SRCS = proj4_open_mp.c
-OBJS = 
+all: $(PROGRAM)
+
+$(PROGRAM): $(OBJS)
+	$(CC) -O2 $(OBJS) -o $(PROGRAM) $(LDFLAGS)
+
+clean:
+	/bin/rm -f $(OBJS) $(PROGRAM)
