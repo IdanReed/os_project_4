@@ -1,3 +1,4 @@
+#include <omp.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,7 +7,7 @@
 
 #define DEFAULT_THREAD_COUNT 12
 
-#define MAX_BATCH_SIZE 1000000
+#define MAX_BATCH_SIZE 120000
 
 
 int thread_count;
@@ -32,7 +33,7 @@ long sum_line(int idx)
   return sum;
 }
 
-void * run_thread( int my_id)
+void * run_thread(int my_id)
 {
   int i;
   int start_pos;
@@ -40,12 +41,11 @@ void * run_thread( int my_id)
   int count;
   long *local_sums;
 
-  #pragma omp private(myID,i,start_pos,end_pos,count,local_sums)
-	{
+  #pragma omp private(my_id,i,start_pos,end_pos,count,local_sums)
+  {
     start_pos = ((int) my_id) * (current_batch_size / thread_count);
     end_pos = start_pos + (current_batch_size / thread_count);
-    count = end_pos - start_pos;
-    local_sums = malloc(sizeof(*local_sums) * count );
+
 
     // Make sure the rounding errors didn't cause problems.
     // Read to the end no matter what on the last thread
@@ -53,6 +53,9 @@ void * run_thread( int my_id)
     {
       end_pos = current_batch_size;
     }
+
+    count = end_pos - start_pos;
+    local_sums = malloc(sizeof(*local_sums) * count );
 
     for(i = start_pos; i < end_pos; i++){
       local_sums[i - start_pos] = sum_line(i);
@@ -114,6 +117,7 @@ int main(int argc, char * argv[])
   char * line = NULL;
   size_t len = 0;
   ssize_t read;
+  int tid;
 
   double summation_time = 0;
 
@@ -126,6 +130,10 @@ int main(int argc, char * argv[])
   if (fp == NULL)
       exit(EXIT_FAILURE);
 
+
+  omp_set_dynamic(0);
+  omp_set_num_threads(thread_count);
+
   while(line_cnt >= MAX_BATCH_SIZE){
     line_cnt = read_lines(fp);
 
@@ -133,10 +141,10 @@ int main(int argc, char * argv[])
 
     gettimeofday(&start, NULL);
 
-    omp_set_num_threads(thread_count);
-
-    #pragma omp parallel
+    #pragma omp parallel num_threads(thread_count)
     {
+      /* something is wrong and only 1 thread is being created */
+      thread_count = omp_get_num_threads();
       run_thread(omp_get_thread_num());
     }
 

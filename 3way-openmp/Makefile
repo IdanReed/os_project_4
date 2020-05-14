@@ -9,7 +9,7 @@ default: all
 all: $(PROGRAM)
 
 $(PROGRAM): $(OBJS)
-	$(CC) -O2 $(OBJS) -o $(PROGRAM) $(LDFLAGS)
+	$(CC) $(OBJS) -o $(PROGRAM) $(LDFLAGS)
 
 clean:
 	/bin/rm -f $(OBJS) $(PROGRAM)
